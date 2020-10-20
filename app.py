@@ -171,9 +171,15 @@ def update_profile(email, username, name, bio, interest, picture=None):
         db.commit()
     else:
         # Update profile
+        if picture:
+            sql = "UPDATE profiles SET username=?,name=?,bio=?,interest=?,picture=? WHERE id=?"
+            values = (username, name, bio, interest, picture, profile_id)
+        else:
+            sql = "UPDATE profiles SET username=?,name=?,bio=?,interest=? WHERE id=?"
+            values = (username, name, bio, interest, profile_id)
         cursor.execute(
-            "UPDATE profiles SET username=?,name=?,bio=?,interest=?,picture=? WHERE id=?",
-            (username, name, bio, interest, picture, profile_id),
+            sql,
+            values,
         )
         db.commit()
     return True
@@ -235,7 +241,7 @@ def profile():
         return render_template("profile.html", profile=profile)
     elif request.method == "POST":
         file = request.files['picture']
-        filepath = ''
+        filepath = None
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             filepath = os.path.join(
@@ -243,13 +249,14 @@ def profile():
                 filename
             )
             file.save(filepath)
+            filepath = os.path.basename(filepath)
         update_ok = update_profile(
             email,
             request.values['username'],
             request.values['name'],
             request.values['bio'],
             request.values['interest'],
-            os.path.basename(filepath),
+            filepath,
         )
         if update_ok:
             return redirect(url_for('profile'))
