@@ -1,9 +1,11 @@
 import os
+import sqlite3
 from flask import (
     Flask,
     render_template, request, redirect,
     url_for,
     session,  # MODIFY ME
+    g,
 )
 from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
 from login_middleware import LoginMiddleware
@@ -22,7 +24,39 @@ LoginMiddleware(app)
 
 HTTP_400_BAD_REQUEST = 400
 
+#
+# Database
+#
+DATABASE = "db.sqlite3"
 
+
+def get_db():
+    db = getattr(g, '_database', None)
+    if db is None:
+        db = g._database = sqlite3.connect(DATABASE)
+        # Enable foreign key check
+        db.execute("PRAGMA foreign_keys = ON")
+    return db
+
+
+@app.teardown_appcontext
+def close_connection(exception):
+    db = getattr(g, '_database', None)
+    if db is not None:
+        db.close()
+
+
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with app.open_resource('schema.sql', mode='r') as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+
+#
+# User authenticate
+#
 def authenticate(email, password):
     """Authenticate"""
     # TODO: Implement authenticate
@@ -35,6 +69,9 @@ def register(email, password):
     pass
 
 
+#
+# Routes
+#
 @app.route("/")
 def home():
     return render_template('index.html')
@@ -73,11 +110,6 @@ def signup():
     return "Bad request", HTTP_400_BAD_REQUEST
 
 
-@app.route("/user/profile", methods=['GET','POST'])
-def profile():
-    return "profile"
-
-
 @app.route("/auth/logout", methods=['GET','POST'])
 def logout():
     if request.method=='POST':
@@ -86,6 +118,25 @@ def logout():
     return render_template('logout.html')
 
 
+@app.route("/user/profile", methods=['GET','POST'])
+def profile():
+    return "profile"
+
+
+@app.route("/users", methods=['GET', 'POST'])
+def list_users():
+    db = get_db()
+    cursor = db.cursor()
+    users = cursor.execute("SELECT u.email FROM users AS u")
+    # 將資料轉為 list
+    column_name = [d[0] for d in users.description]
+    user_list = [dict(zip(column_name, r)) for r in users.fetchall()]
+    return render_template('users.html', users=user_list) 
+
+
+#
+# Main
+#
 if __name__ == "__main__":
     app.run()
 
