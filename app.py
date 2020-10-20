@@ -8,6 +8,7 @@ from flask import (
     g,
 )
 from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
+from flask_bcrypt import Bcrypt
 from login_middleware import LoginMiddleware
 from config import Config
 
@@ -17,6 +18,7 @@ app = Flask(
     instance_relative_config=True
 )
 app.config.from_object(Config)
+bcrypt = Bcrypt()
 
 csrf = CSRFMiddleware(app)
 LoginMiddleware(app)
@@ -57,16 +59,44 @@ def init_db():
 #
 # User authenticate
 #
+def generate_password_hash(password):
+    return bcrypt.generate_password_hash(password)
+
+
 def authenticate(email, password):
     """Authenticate"""
-    # TODO: Implement authenticate
+    # authenticate
+    db = get_db()
+    cursor = db.cursor()
+    # query user
+    cursor.execute("SELECT email, password FROM users where email=? ", (email,))
+    record = cursor.fetchone()
+    if record is None:
+        return False
+
+    email, stored_password = record
+    if not bcrypt.check_password_hash(stored_password, password):
+        return False
+
     return True
 
 
 def register(email, password):
     """Register"""
-    # TODO: Implement register
-    pass
+    # register
+    db = get_db()
+    cursor = db.cursor()
+    # query user
+    cursor.execute("SELECT email FROM users where email=? ", (email,))
+    if cursor.fetchone() is None:
+        # add user
+        db.execute(
+            "INSERT INTO users (email, password) VALUES (?, ?)",
+            (email, generate_password_hash(password))
+        )  
+        db.commit()
+        return True
+    return False
 
 
 #
