@@ -2,14 +2,18 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>iFriend - Logout</title>
+  <title>iFriend - Users</title>
 </head>
 <body>
   <p>iFriend, a simple website for making friend.</p>
+  <ul>
+      <li><a href="{{url_for('home')}}">Home</a></li>
+  </ul>
 
+  <h3>Users</h3>
   <ul>
       {% for user in user_list %}
-      <li>{{user.email}}</li>
+      <li><a href="{{url_for('profileByEmail', email=user.email)}}">{{user.email}}</a></li>
       {% else %}
       <li>No users</li>
       {% endfor %}

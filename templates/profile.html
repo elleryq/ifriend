@@ -6,7 +6,11 @@
 </head>
 <body>
   <p>iFriend, a simple website for making friend.</p>
+  <ul>
+      <li><a href="{{url_for('home')}}">Home</a></li>
+  </ul>
 
+  <h3>Profile</h3>
   <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
 

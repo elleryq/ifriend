@@ -2,23 +2,27 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>iFriend</title>
+  <title>iFriend - Login</title>
 </head>
 <body>
   <p>iFriend, a simple website for making friend.</p>
 
   <ul>
-      <!-- if anonymous -->
+      <li><a href="{{ url_for('home') }}">Home</a></li>
       <li><a href="{{ url_for('signup') }}">Signup</a></li>
-      <!-- endif -->
   </ul>
 
+  <h3>Login</h3>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
-    <label>E-Mail</label>
-	<input type="email" name="email">
-    <label>Password</label>
-	<input type="password" name="password">
+    <div>
+      <label>E-Mail</label>
+	  <input type="email" name="email">
+    </div>
+    <div>
+      <label>Password</label>
+	  <input type="password" name="password">
+    </div>
 
 	<input type="submit" name="send" value="Login">
   </form>

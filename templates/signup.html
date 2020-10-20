@@ -8,19 +8,25 @@
   <p>iFriend, a simple website for making friend.</p>
 
   <ul>
-      <!-- if anonymous -->
+      <li><a href="{{ url_for('home') }}">Home</a></li>
       <li><a href="{{ url_for('login') }}">Login</a></li>
-      <!-- endif -->
   </ul>
 
+  <h3>Signup</h3>
   <form method="post">
     <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
-    <label>E-Mail</label>
-	<input type="email" name="email">
-    <label>Password</label>
-	<input type="password" name="password">
-    <label>Password again</label>
-	<input type="password" name="password2">
+    <div>
+      <label>E-Mail</label>
+	  <input type="email" name="email">
+    </div>
+    <div>
+      <label>Password</label>
+	  <input type="password" name="password">
+    </div>
+    <div>
+      <label>Password again</label>
+	  <input type="password" name="password2">
+    </div>
 
 	<input type="submit" name="signup" value="Sign up">
   </form>
