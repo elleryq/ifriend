@@ -11,6 +11,7 @@
   </ul>
 
   <h3>Profile</h3>
+  <p>Visitors: {{visitor_list | join(', ', 'email')}}</p>
   <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
 

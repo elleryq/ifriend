@@ -116,13 +116,14 @@ def get_profile(email):
     cursor = db.cursor()
 
     # query user
-    cursor.execute("SELECT email, profile_id FROM users where email=? ", (email,))
+    cursor.execute("SELECT id, email, profile_id FROM users where email=? ", (email,))
+    db.commit()
     user_record = cursor.fetchone()
     if user_record is None:
         # No such user, error.
         return False
 
-    email, profile_id = user_record
+    user_id, email, profile_id = user_record
     if profile_id is None or profile_id == None:
         return {}
 
@@ -131,10 +132,12 @@ def get_profile(email):
         "SELECT username, name, bio, interest, picture FROM profiles WHERE id=?",
         (profile_id,),
     )
+    db.commit()
     profile_record = cursor.fetchone()
     if profile_record is None:
         return {}
     username, name, bio, interest, picture = profile_record
+
     return {
         'username': username,
         'name': name,
@@ -142,6 +145,31 @@ def get_profile(email):
         'interest': interest,
         'picture': picture,
     }
+
+
+def get_visitor_list(email):
+    db = get_db()
+    cursor = db.cursor()
+
+    # query user
+    cursor.execute("SELECT id FROM users where email=? ", (email,))
+    db.commit()
+    user_record = cursor.fetchone()
+    if user_record is None:
+        # No such user, error.
+        return False
+    user_id = user_record[0]
+
+    # Get who visit my profile
+    visitors = cursor.execute(
+        "SELECT u.email FROM visited as v, users as u WHERE v.self=? AND v.self=u.id",
+        (user_id,)
+    )
+    db.commit()
+    column_name = [d[0] for d in visitors.description]
+    visitor_list = [dict(zip(column_name, r)) for r in visitors.fetchall()]
+    print(f"visitor_list={visitor_list}")
+    return visitor_list
 
 
 def update_profile(email, username, name, bio, interest, picture=None):
@@ -183,6 +211,49 @@ def update_profile(email, username, name, bio, interest, picture=None):
         )
         db.commit()
     return True
+
+
+def record_visitor(target_email, visitor_email):
+    if target_email == visitor_email:
+        return
+
+    db = get_db()
+    cursor = db.cursor()
+
+    # query user
+    cursor.execute("SELECT id FROM users where email=? ", (target_email,))
+    db.commit()
+    user_record = cursor.fetchone()
+    if user_record is None:
+        # No such user, error.
+        return False
+    target_id = user_record[0]
+
+    # query user
+    cursor.execute("SELECT id FROM users where email=? ", (visitor_email,))
+    db.commit()
+    user_record = cursor.fetchone()
+    if user_record is None:
+        # No such user, error.
+        return False
+    visitor_id = user_record[0]
+
+    # Check if recorded
+    cursor.execute(
+        "SELECT COUNT(*) FROM visited WHERE self=? AND visitor=?",
+        (target_id, visitor_id, ),
+    )
+    result=cursor.fetchone()
+    number_of_rows = result[0]
+    if number_of_rows > 0:
+        return
+
+    # record
+    cursor.execute(
+        "INSERT INTO visited (self, visitor) VALUES (?, ?)",
+        (target_id, visitor_id, ),
+    )
+    db.commit()
 
 #
 # Routes
@@ -238,7 +309,12 @@ def profile():
     email = session['user']
     if request.method == "GET":
         profile = get_profile(email)
-        return render_template("profile.html", profile=profile)
+        visitor_list = get_visitor_list(email)
+        return render_template(
+            "profile.html",
+            profile=profile,
+            visitor_list=visitor_list
+        )
     elif request.method == "POST":
         file = request.files['picture']
         filepath = None
@@ -268,7 +344,10 @@ def profile():
 def profileByEmail():
     email = request.args.get('email')
     if request.method == "GET":
+        visitor_email = session['user']
+        target_email = email
         profile = get_profile(email)
+        record_visitor(target_email, visitor_email)
         return render_template("profile_by_email.html", profile=profile)
 
     return "Bad request", HTTP_400_BAD_REQUEST
@@ -283,7 +362,6 @@ def list_users():
     # 將資料轉為 list
     column_name = [d[0] for d in users.description]
     user_list = [dict(zip(column_name, r)) for r in users.fetchall()]
-    print(user_list)
     return render_template('users.html', user_list=user_list) 
 
 
