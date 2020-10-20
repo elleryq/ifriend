@@ -1,11 +1,12 @@
 import os
 from flask import (
     Flask,
-    render_template, session, request, redirect,
+    render_template, request, redirect,
     url_for,
+    session,  # MODIFY ME
 )
 from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
-
+from login_middleware import LoginMiddleware
 from config import Config
 
 
@@ -16,6 +17,7 @@ app = Flask(
 app.config.from_object(Config)
 
 csrf = CSRFMiddleware(app)
+LoginMiddleware(app)
 
 
 HTTP_400_BAD_REQUEST = 400
@@ -48,6 +50,7 @@ def login():
         password = request.values['password']
         if not authenticate(email, password):
             return render_template("login.html")
+        session['user'] = email
         return redirect(url_for('home'))
 
     return "Bad request", HTTP_400_BAD_REQUEST
@@ -77,7 +80,10 @@ def profile():
 
 @app.route("/auth/logout", methods=['GET','POST'])
 def logout():
-    return "logout"
+    if request.method=='POST':
+        session.pop('user', None)
+        return redirect(url_for('home'))
+    return render_template('logout.html')
 
 
 if __name__ == "__main__":
