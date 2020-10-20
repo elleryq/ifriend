@@ -27,5 +27,10 @@ def profile():
     return "profile"
 
 
+@app.route("/auth/logout")
+def logout():
+    return "logout"
+
+
 if __name__ == "__main__":
     app.run(debug=DEBUG)
