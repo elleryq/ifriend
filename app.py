@@ -257,15 +257,27 @@ def profile():
     return "Bad request", HTTP_400_BAD_REQUEST
 
 
+@app.route("/user/profileByEmail", methods=['GET'])
+def profileByEmail():
+    email = request.args.get('email')
+    if request.method == "GET":
+        profile = get_profile(email)
+        return render_template("profile_by_email.html", profile=profile)
+
+    return "Bad request", HTTP_400_BAD_REQUEST
+
+
 @app.route("/users", methods=['GET', 'POST'])
 def list_users():
     db = get_db()
     cursor = db.cursor()
     users = cursor.execute("SELECT u.email FROM users AS u")
+    db.commit()
     # 將資料轉為 list
     column_name = [d[0] for d in users.description]
     user_list = [dict(zip(column_name, r)) for r in users.fetchall()]
-    return render_template('users.html', users=user_list) 
+    print(user_list)
+    return render_template('users.html', user_list=user_list) 
 
 
 #
