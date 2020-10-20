@@ -16,3 +16,9 @@ CREATE TABLE users (
 
 CREATE INDEX idx_email ON users (email);
 
+CREATE TABLE visited (
+    id INTEGER PRIMARY KEY ASC AUTOINCREMENT,
+    self INTEGER NOT NULL,
+    visitor INTEGER NOT NULL
+);
+CREATE INDEX idx_self ON visited (self);
