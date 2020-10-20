@@ -13,6 +13,7 @@ from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
 from flask_bcrypt import Bcrypt
 from login_middleware import LoginMiddleware
 from config import Config
+from xss import XssFilter
 
 
 app = Flask(
@@ -29,6 +30,8 @@ app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
 
 HTTP_400_BAD_REQUEST = 400
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
+xssFilter = XssFilter()
+
 
 #
 # Database
@@ -60,13 +63,19 @@ def init_db():
         db.commit()
 
 
+class NotFoundException(Exception):
+    pass
+
+
 #
-# User authenticate
+# User authentication
 #
+
 bcrypt = Bcrypt()
 
 
 def generate_password_hash(password):
+    """產生密碼雜湊"""
     return bcrypt.generate_password_hash(password)
 
 
@@ -90,7 +99,7 @@ def authenticate(email, password):
 
 def register(email, password):
     """Register"""
-    # register
+    # registe
     db = get_db()
     cursor = db.cursor()
     # query user
@@ -107,11 +116,13 @@ def register(email, password):
 
 
 def allowed_file(filename):
+    """檢查副檔名是否允許"""
     return '.' in filename and \
            filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
 
 
 def get_profile(email):
+    """依指定 email 取得 profile"""
     db = get_db()
     cursor = db.cursor()
 
@@ -147,7 +158,8 @@ def get_profile(email):
     }
 
 
-def get_visitor_list(email):
+def get_user_id_by_email(email):
+    """依據 email 取得 user id"""
     db = get_db()
     cursor = db.cursor()
 
@@ -156,9 +168,17 @@ def get_visitor_list(email):
     db.commit()
     user_record = cursor.fetchone()
     if user_record is None:
-        # No such user, error.
-        return False
-    user_id = user_record[0]
+        raise NotFoundException('No such user.')
+    return user_record[0]
+
+
+def get_visitor_list(email):
+    """取得訪客清單"""
+    db = get_db()
+    cursor = db.cursor()
+
+    # query user
+    user_id = get_user_id_by_email(email)
 
     # Get who visit my profile
     visitors = cursor.execute(
@@ -168,11 +188,11 @@ def get_visitor_list(email):
     db.commit()
     column_name = [d[0] for d in visitors.description]
     visitor_list = [dict(zip(column_name, r)) for r in visitors.fetchall()]
-    print(f"visitor_list={visitor_list}")
     return visitor_list
 
 
 def update_profile(email, username, name, bio, interest, picture=None):
+    """更新 profile"""
     db = get_db()
     cursor = db.cursor()
 
@@ -214,35 +234,31 @@ def update_profile(email, username, name, bio, interest, picture=None):
 
 
 def record_visitor(target_email, visitor_email):
+    """
+    紀錄來察看的使用者
+
+    Args:
+      - target_email: 受訪者的 email
+      - visitor_email: 訪客的 email
+    """
     if target_email == visitor_email:
         return
+
+    # query user
+    target_id = get_user_id_by_email(target_email)
+
+    # query user
+    visitor_id = get_user_id_by_email(visitor_email)
 
     db = get_db()
     cursor = db.cursor()
 
-    # query user
-    cursor.execute("SELECT id FROM users where email=? ", (target_email,))
-    db.commit()
-    user_record = cursor.fetchone()
-    if user_record is None:
-        # No such user, error.
-        return False
-    target_id = user_record[0]
-
-    # query user
-    cursor.execute("SELECT id FROM users where email=? ", (visitor_email,))
-    db.commit()
-    user_record = cursor.fetchone()
-    if user_record is None:
-        # No such user, error.
-        return False
-    visitor_id = user_record[0]
-
-    # Check if recorded
+    # 檢查是否已經紀錄過了
     cursor.execute(
         "SELECT COUNT(*) FROM visited WHERE self=? AND visitor=?",
         (target_id, visitor_id, ),
     )
+    db.commit()
     result=cursor.fetchone()
     number_of_rows = result[0]
     if number_of_rows > 0:
@@ -256,16 +272,20 @@ def record_visitor(target_email, visitor_email):
     db.commit()
 
 #
-# Routes
+# Endpoints
 #
+
 @app.route("/")
 def home():
+    """首頁"""
     return render_template('index.html')
 
 
 @app.route("/auth/login", methods=['GET','POST'])
 def login():
+    """登入"""
     if request.method == "GET":
+        # 顯示登入表單
         return render_template("login.html")
     elif request.method == "POST":
         # do authenticate.
@@ -281,7 +301,9 @@ def login():
 
 @app.route("/auth/signup", methods=['GET','POST'])
 def signup():
+    """註冊"""
     if request.method == "GET":
+        # 顯示註冊表單
         return render_template("signup.html")
     elif request.method == "POST":
         # do register.
@@ -298,6 +320,7 @@ def signup():
 
 @app.route("/auth/logout", methods=['GET','POST'])
 def logout():
+    """登出"""
     if request.method=='POST':
         session.pop('user', None)
         return redirect(url_for('home'))
@@ -306,8 +329,13 @@ def logout():
 
 @app.route("/user/profile", methods=['GET','POST'])
 def profile():
+    """顯示登入使用者的 profile"""
     email = session['user']
+    if not email:
+        return redirect(url_for('login'))
+
     if request.method == "GET":
+        # 顯示 profile 表單
         profile = get_profile(email)
         visitor_list = get_visitor_list(email)
         return render_template(
@@ -316,6 +344,8 @@ def profile():
             visitor_list=visitor_list
         )
     elif request.method == "POST":
+        # 更新 profile
+        # 先處理照片
         file = request.files['picture']
         filepath = None
         if file and allowed_file(file.filename):
@@ -326,22 +356,32 @@ def profile():
             )
             file.save(filepath)
             filepath = os.path.basename(filepath)
+
+        # 再更新 profile
         update_ok = update_profile(
             email,
-            request.values['username'],
-            request.values['name'],
-            request.values['bio'],
-            request.values['interest'],
+            xssFilter.strip(request.values['username']),
+            xssFilter.strip(request.values['name']),
+            xssFilter.strip(request.values['bio']),
+            xssFilter.strip(request.values['interest']),
             filepath,
         )
         if update_ok:
             return redirect(url_for('profile'))
+        else:
+            # TODO: 更新發生錯誤的處理
+            pass
 
     return "Bad request", HTTP_400_BAD_REQUEST
 
 
 @app.route("/user/profileByEmail", methods=['GET'])
 def profileByEmail():
+    """依指定 email 顯示該使用者的 profile"""
+    current_user_email = session['user']
+    if not current_user_email:
+        return redirect(url_for('login'))
+
     email = request.args.get('email')
     if request.method == "GET":
         visitor_email = session['user']
@@ -355,6 +395,11 @@ def profileByEmail():
 
 @app.route("/users", methods=['GET', 'POST'])
 def list_users():
+    """列出所有使用者"""
+    current_user_email = session['user']
+    if not current_user_email:
+        return redirect(url_for('login'))
+
     db = get_db()
     cursor = db.cursor()
     users = cursor.execute("SELECT u.email FROM users AS u")
@@ -362,7 +407,7 @@ def list_users():
     # 將資料轉為 list
     column_name = [d[0] for d in users.description]
     user_list = [dict(zip(column_name, r)) for r in users.fetchall()]
-    return render_template('users.html', user_list=user_list) 
+    return render_template('users.html', user_list=user_list)
 
 
 #

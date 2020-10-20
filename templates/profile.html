@@ -27,12 +27,12 @@
 
     <div>
       <label>Bio</label>
-      <textarea name="bio">{{profile.bio}}</textarea>
+      <textarea name="bio">{{profile.bio | safe}}</textarea>
     </div>
 
     <div>
       <label>Interest</label>
-      <textarea name="interest">{{profile.interest}}</textarea>
+      <textarea name="interest">{{profile.interest | safe}}</textarea>
     </div>
 
     <div>
