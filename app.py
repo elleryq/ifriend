@@ -7,6 +7,8 @@ from flask import (
     session,  # MODIFY ME
     g,
 )
+from werkzeug.utils import secure_filename
+from werkzeug.middleware.shared_data import SharedDataMiddleware
 from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
 from flask_bcrypt import Bcrypt
 from login_middleware import LoginMiddleware
@@ -18,13 +20,15 @@ app = Flask(
     instance_relative_config=True
 )
 app.config.from_object(Config)
-bcrypt = Bcrypt()
 
 csrf = CSRFMiddleware(app)
 LoginMiddleware(app)
-
+app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
+    '/media':  app.config['UPLOAD_FOLDER']
+})
 
 HTTP_400_BAD_REQUEST = 400
+ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
 
 #
 # Database
@@ -59,6 +63,9 @@ def init_db():
 #
 # User authenticate
 #
+bcrypt = Bcrypt()
+
+
 def generate_password_hash(password):
     return bcrypt.generate_password_hash(password)
 
@@ -90,14 +97,86 @@ def register(email, password):
     cursor.execute("SELECT email FROM users where email=? ", (email,))
     if cursor.fetchone() is None:
         # add user
-        db.execute(
+        cursor.execute(
             "INSERT INTO users (email, password) VALUES (?, ?)",
             (email, generate_password_hash(password))
-        )  
+        )
         db.commit()
         return True
     return False
 
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+
+
+def get_profile(email):
+    db = get_db()
+    cursor = db.cursor()
+
+    # query user
+    cursor.execute("SELECT email, profile_id FROM users where email=? ", (email,))
+    user_record = cursor.fetchone()
+    if user_record is None:
+        # No such user, error.
+        return False
+
+    email, profile_id = user_record
+    if profile_id is None or profile_id == None:
+        return {}
+
+    # Get profile
+    cursor.execute(
+        "SELECT username, name, bio, interest, picture FROM profiles WHERE id=?",
+        (profile_id,),
+    )
+    profile_record = cursor.fetchone()
+    if profile_record is None:
+        return {}
+    username, name, bio, interest, picture = profile_record
+    return {
+        'username': username,
+        'name': name,
+        'bio': bio,
+        'interest': interest,
+        'picture': picture,
+    }
+
+
+def update_profile(email, username, name, bio, interest, picture=None):
+    db = get_db()
+    cursor = db.cursor()
+
+    # query user
+    cursor.execute("SELECT email, profile_id FROM users where email=? ", (email,))
+    user_record = cursor.fetchone()
+    if user_record is None:
+        # No such user, error.
+        return False
+
+    email, profile_id = user_record
+    if profile_id is None:
+        # add profile
+        cursor.execute(
+            "INSERT INTO profiles (username, name, bio, interest, picture) VALUES (?, ?, ?, ?, ?)",
+            (username, name, bio, interest, picture)
+        )
+        db.commit()
+        profile_id = cursor.lastrowid
+        cursor.execute(
+            "UPDATE users SET profile_id = ? WHERE email=?",
+            (profile_id, email)
+        )
+        db.commit()
+    else:
+        # Update profile
+        cursor.execute(
+            "UPDATE profiles SET username=?,name=?,bio=?,interest=?,picture=? WHERE id=?",
+            (username, name, bio, interest, picture, profile_id),
+        )
+        db.commit()
+    return True
 
 #
 # Routes
@@ -150,7 +229,33 @@ def logout():
 
 @app.route("/user/profile", methods=['GET','POST'])
 def profile():
-    return "profile"
+    email = session['user']
+    if request.method == "GET":
+        profile = get_profile(email)
+        return render_template("profile.html", profile=profile)
+    elif request.method == "POST":
+        # TODO:
+        file = request.files['picture']
+        filepath = ''
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(
+                app.config['UPLOAD_FOLDER'],
+                filename
+            )
+            file.save(filepath)
+        update_ok = update_profile(
+            email,
+            request.values['username'],
+            request.values['name'],
+            request.values['bio'],
+            request.values['interest'],
+            os.path.basename(filepath),
+        )
+        if update_ok:
+            return redirect(url_for('profile'))
+
+    return "Bad request", HTTP_400_BAD_REQUEST
 
 
 @app.route("/users", methods=['GET', 'POST'])

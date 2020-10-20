@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>iFriend - Profile</title>
+</head>
+<body>
+  <p>iFriend, a simple website for making friend.</p>
+
+  <form method="post" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
+
+    <div>
+      <label>Username</label>
+      <input type="TEXT" name="username" value="{{profile.username}}">
+    </div>
+
+    <div>
+      <label>Name</label>
+      <input type="TEXT" name="name" value="{{profile.name}}">
+    </div>
+
+    <div>
+      <label>Bio</label>
+      <textarea name="bio">{{profile.bio}}</textarea>
+    </div>
+
+    <div>
+      <label>Interest</label>
+      <textarea name="interest">{{profile.interest}}</textarea>
+    </div>
+
+    <div>
+      {% if profile.picture %}
+      <img src="/media/{{profile.picture}}">
+      {% endif %}
+    </div>
+
+    <div>
+      <label>Picture</label>
+	  <input type="file" name="picture">
+    </div>
+
+	<input type="submit" name="send" value="Update">
+  </form>
+
+</body>
+</html>
