@@ -22,7 +22,15 @@ HTTP_400_BAD_REQUEST = 400
 
 
 def authenticate(email, password):
+    """Authenticate"""
+    # TODO: Implement authenticate
     return True
+
+
+def register(email, password):
+    """Register"""
+    # TODO: Implement register
+    pass
 
 
 @app.route("/")
@@ -36,7 +44,6 @@ def login():
         return render_template("login.html")
     elif request.method == "POST":
         # do authenticate.
-        pass
         email = request.values['email']
         password = request.values['password']
         if not authenticate(email, password):
@@ -48,7 +55,19 @@ def login():
 
 @app.route("/auth/signup", methods=['GET','POST'])
 def signup():
-    return "Signup"
+    if request.method == "GET":
+        return render_template("signup.html")
+    elif request.method == "POST":
+        # do register.
+        email = request.values['email']
+        password = request.values['password']
+        password2 = request.values['password2']
+        if password != password2:
+            return render_template("signup.html")
+        register(email, password)
+        return redirect(url_for('home'))
+
+    return "Bad request", HTTP_400_BAD_REQUEST
 
 
 @app.route("/user/profile", methods=['GET','POST'])
