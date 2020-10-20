@@ -4,11 +4,19 @@ from flask import (
     render_template, session, request, redirect,
     url_for,
 )
+from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
+
+from config import Config
 
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    instance_relative_config=True
+)
+app.config.from_object(Config)
 
-DEBUG = os.environ.get('FLASK_DEBUG', "False").lower() == "true"
+csrf = CSRFMiddleware(app)
+
 
 HTTP_400_BAD_REQUEST = 400
 
@@ -54,4 +62,5 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=DEBUG)
+    app.run()
+
