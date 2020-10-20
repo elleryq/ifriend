@@ -234,7 +234,6 @@ def profile():
         profile = get_profile(email)
         return render_template("profile.html", profile=profile)
     elif request.method == "POST":
-        # TODO:
         file = request.files['picture']
         filepath = ''
         if file and allowed_file(file.filename):
