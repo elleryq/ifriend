@@ -60,7 +60,6 @@ pip install -r requirements.txt
 ```
 pyenv virtualenv ifriend
 pyenv activate ifriend
-source env
 python app.py
 ```
 
