@@ -1,7 +1,7 @@
 # iFriend
 
 
-- 請實作一個簡易的交友網站，分別具有以下功能:
+- 實作一個簡易的交友網站，具有以下功能:
   - 有一個註冊頁面 User 需要填寫email/password，以完成註冊流程。
   - 有一個登入頁面 User可以輸入email & password登入。
   - 當User登入後可以查看並編輯自己的Profile頁面，Profile頁面至少包含以下內容:
@@ -13,6 +13,7 @@
   - 有一個User列表頁，可以看到所有User  清單
   - 點擊列表中的項目,可以看到該User的profile頁面
   - 可以顯示自己的profile頁被誰看過(自己看過不算)
+
 - 以下列出的四種網站安全機制請選擇其中兩種，在不使用現成的套件的機制下，
   自行依據其原理實作完成，並在回信時分別解釋該程式的實作方式:
   - 登入使用Cookie or Session的機制(若使用Cookie/Session則需要考慮到可能的Security Issue)。
