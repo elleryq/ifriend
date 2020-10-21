@@ -1,11 +1,13 @@
 import os
 import sqlite3
+from functools import wraps
 from flask import (
     Flask,
     render_template, request, redirect,
     url_for,
     session,
     g,
+    flash,
 )
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.shared_data import SharedDataMiddleware
@@ -20,17 +22,23 @@ app = Flask(
     __name__,
     instance_relative_config=True
 )
+
+# 讀取設定
 app.config.from_object(Config)
 
+# 加入 Middleware
 csrf = CSRFMiddleware(app)
 LoginMiddleware(app)
+
+# 處理圖片網址
 app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
     '/media':  app.config['UPLOAD_FOLDER']
 })
 
+# 常數
 HTTP_400_BAD_REQUEST = 400
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
-xssFilter = XssFilter()
+SESSION_USER_KEY = 'user'
 
 
 #
@@ -71,6 +79,7 @@ class NotFoundException(Exception):
 # User authentication
 #
 
+xssFilter = XssFilter()
 bcrypt = Bcrypt()
 
 
@@ -158,18 +167,32 @@ def get_profile(email):
     }
 
 
-def get_user_id_by_email(email):
-    """依據 email 取得 user id"""
+def get_user_by_email(email):
+    """依據 email 取得 user dict"""
+    if not email:
+        raise NotFoundException('No such user.')
+
     db = get_db()
     cursor = db.cursor()
 
     # query user
-    cursor.execute("SELECT id FROM users where email=? ", (email,))
+    cursor.execute("SELECT id, email, profile_id FROM users where email=? ", (email,))
     db.commit()
     user_record = cursor.fetchone()
     if user_record is None:
         raise NotFoundException('No such user.')
-    return user_record[0]
+    user_id, email, profile_id = user_record
+    return {
+        'user_id': user_id,
+        'email': email,
+        'profile_id': profile_id,
+    }
+
+
+def get_user_id_by_email(email):
+    """依據 email 取得 user id"""
+    user = get_user_by_email(email)
+    return user['user_id']
 
 
 def get_visitor_list(email):
@@ -197,13 +220,10 @@ def update_profile(email, username, name, bio, interest, picture=None):
     cursor = db.cursor()
 
     # query user
-    cursor.execute("SELECT email, profile_id FROM users where email=? ", (email,))
-    user_record = cursor.fetchone()
-    if user_record is None:
-        # No such user, error.
-        return False
+    user = get_user_by_email(email)
 
-    email, profile_id = user_record
+    email = user['email']
+    profile_id = user['profile_id']
     if profile_id is None:
         # add profile
         cursor.execute(
@@ -261,15 +281,31 @@ def record_visitor(target_email, visitor_email):
     db.commit()
     result=cursor.fetchone()
     number_of_rows = result[0]
+
+    # 已經紀錄過，就跳過。
     if number_of_rows > 0:
         return
 
-    # record
+    # 紀錄
     cursor.execute(
         "INSERT INTO visited (self, visitor) VALUES (?, ?)",
         (target_id, visitor_id, ),
     )
     db.commit()
+
+#
+# Decorator
+#
+def login_required(func):
+    @wraps(func)
+    def wrap(*args, **kwargs):
+        if "user" in session:
+            email = session[SESSION_USER_KEY]
+            if email:
+                return func(*args, **kwargs)
+        flash("Need to login first.")
+        return redirect(url_for("login"))
+    return wrap
 
 #
 # Endpoints
@@ -293,7 +329,7 @@ def login():
         password = request.values['password']
         if not authenticate(email, password):
             return render_template("login.html")
-        session['user'] = email
+        session[SESSION_USER_KEY] = email
         return redirect(url_for('home'))
 
     return "Bad request", HTTP_400_BAD_REQUEST
@@ -319,21 +355,20 @@ def signup():
 
 
 @app.route("/auth/logout", methods=['GET','POST'])
+@login_required
 def logout():
     """登出"""
     if request.method=='POST':
-        session.pop('user', None)
+        session.pop(SESSION_USER_KEY, None)
         return redirect(url_for('home'))
     return render_template('logout.html')
 
 
 @app.route("/user/profile", methods=['GET','POST'])
+@login_required
 def profile():
     """顯示登入使用者的 profile"""
-    email = session['user']
-    if not email:
-        return redirect(url_for('login'))
-
+    email = session[SESSION_USER_KEY]
     if request.method == "GET":
         # 顯示 profile 表單
         profile = get_profile(email)
@@ -376,15 +411,12 @@ def profile():
 
 
 @app.route("/user/profileByEmail", methods=['GET'])
+@login_required
 def profileByEmail():
     """依指定 email 顯示該使用者的 profile"""
-    current_user_email = session['user']
-    if not current_user_email:
-        return redirect(url_for('login'))
-
     email = request.args.get('email')
     if request.method == "GET":
-        visitor_email = session['user']
+        visitor_email = session[SESSION_USER_KEY]
         target_email = email
         profile = get_profile(email)
         record_visitor(target_email, visitor_email)
@@ -394,12 +426,9 @@ def profileByEmail():
 
 
 @app.route("/users", methods=['GET', 'POST'])
+@login_required
 def list_users():
     """列出所有使用者"""
-    current_user_email = session['user']
-    if not current_user_email:
-        return redirect(url_for('login'))
-
     db = get_db()
     cursor = db.cursor()
     users = cursor.execute("SELECT u.email FROM users AS u")
