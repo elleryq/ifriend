@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>iFriend</title>
+</head>
+<body>
+  <p>iFriend, a simple website for making friend.</p>
+
+  <ul>
+      <!-- if anonymous -->
+      {% if not is_authenticated %}
+      <li><a href="{{ url_for('signup') }}">Signup</a></li>
+      <li><a href="{{ url_for('login') }}">Login</a></li>
+      {% endif %}
+      <!-- endif -->
+
+      <!-- if logined -->
+      {% if is_authenticated %}
+      <li><a href="{{ url_for('list_users') }}">Users</a></li>
+      <li><a href="{{ url_for('profile') }}">Profile</a></li>
+      <li><a href="{{ url_for('logout') }}">Logout</a></li>
+      {% endif %}
+      <!-- endif -->
+  </ul>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>iFriend - Profile - {{email}}</title>
+</head>
+<body>
+  <p>iFriend, a simple website for making friend.</p>
+
+  <ul>
+      <li><a href="{{ url_for('home') }}">Home</a></li>
+  </ul>
+
+  <h3>Profile</h3>
+  <ul>
+      <li>E-Mmail: {{email}}</li>
+      <li>Username: {{profile.username}}</li>
+      <li>Name: {{profile.name}}</li>
+  </ul>
+
+  <div>
+    <h3>Bio</h3>
+    <p>{{profile.bio | safe}}</p>
+  </div>
+
+  <div>
+    <h3>Interest</h3>
+    <p>{{profile.interest | safe}}</p>
+  </div>
+
+  <div>
+    {% if profile.picture %}
+    <img src="/media/{{profile.picture}}">
+    {% endif %}
+  </div>
+</body>
+</html>
