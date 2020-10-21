@@ -20,6 +20,13 @@
   - DB的query 要能避免SQL injection。
   - 要能避免XSS 攻擊。
 
+## 說明
+
+實作了以下網站安全機制：
+
+ - 編輯送出Profile的Form需要有CSRF token的機制。
+ - 要能避免XSS 攻擊。
+
 ## Setup
 
 ## Operation system and language runtime
