@@ -70,3 +70,14 @@ pyenv activate ifriend
 python app.py
 ```
 
+設置資料庫，先以 sqlite3 開啟資料庫
+```
+$ sqlite3 db.sqlite3
+```
+
+執行 schema.sql 來建立資料表格。
+```
+sqlite> .read schema.sql
+```
+
+按下 ctrl + d 離開
