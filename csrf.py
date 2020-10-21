@@ -57,12 +57,12 @@ class CSRFError(Exception):
     pass
 
 
-def validate_csrf(data, secret_key=None, time_limit=None, token_key=None):
+def validate_csrf(data):
     """
     檢查 CSRF token 是否正確。
     """
     secret_key = current_app.secret_key
-    time_limit = 30 * 60  # token 有效期限制為半小時
+    time_limit = 30 * 60  # token 預設有效期限制為半小時
 
     if not data:
         raise ValidationError('No CSRF token.')
@@ -70,9 +70,10 @@ def validate_csrf(data, secret_key=None, time_limit=None, token_key=None):
     if CSRF_FIELD_NAME not in session:
         raise ValidationError('No CSRF session token.')
 
-    s = URLSafeTimedSerializer(secret_key, salt='wtf-csrf-token')
+    s = URLSafeTimedSerializer(secret_key, salt=CSRF_TOKEN_SALT)
 
     try:
+        print(f"data={data}")
         token = s.loads(data, max_age=time_limit)
     except SignatureExpired:
         raise ValidationError('The CSRF token has expired.')
