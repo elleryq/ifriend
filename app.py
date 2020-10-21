@@ -328,6 +328,7 @@ def login():
         email = request.values['email']
         password = request.values['password']
         if not authenticate(email, password):
+            flash('Login fail.')
             return render_template("login.html")
         session[SESSION_USER_KEY] = email
         return redirect(url_for('home'))
@@ -347,6 +348,7 @@ def signup():
         password = request.values['password']
         password2 = request.values['password2']
         if password != password2:
+            flash('Password fields error.')
             return render_template("signup.html")
         register(email, password)
         return redirect(url_for('home'))
@@ -401,11 +403,9 @@ def profile():
             xssFilter.strip(request.values['interest']),
             filepath,
         )
-        if update_ok:
-            return redirect(url_for('profile'))
-        else:
-            # TODO: 更新發生錯誤的處理
-            pass
+        if not update_ok:
+            flash('Update fail.')
+        return redirect(url_for('profile'))
 
     return "Bad request", HTTP_400_BAD_REQUEST
 

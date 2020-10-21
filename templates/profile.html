@@ -12,6 +12,18 @@
 
   <h3>Profile</h3>
   <p>Visitors: {{visitor_list | join(', ', 'email')}}</p>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <h4>Errors</h4>
+    <div>
+      <ul class="flash">
+        {% for message in messages %}
+            <li>{{ message }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+  {% endwith %}
   <form method="post" enctype="multipart/form-data">
     <input type="hidden" name="csrf_token" value="{{csrf_token()}}"/>
 
