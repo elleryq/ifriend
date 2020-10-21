@@ -4,12 +4,12 @@ from flask import (
     Flask,
     render_template, request, redirect,
     url_for,
-    session,  # MODIFY ME
+    session,
     g,
 )
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.shared_data import SharedDataMiddleware
-from flask_wtf.csrf import CSRFProtect as CSRFMiddleware  # MODIFY ME
+from csrf import CSRFMiddleware
 from flask_bcrypt import Bcrypt
 from login_middleware import LoginMiddleware
 from config import Config
