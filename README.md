@@ -77,7 +77,6 @@ sqlite> .read schema.sql
 
 接著就可以進行本地端開發
 ```
-pyenv virtualenv ifriend
 pyenv activate ifriend
 python app.py
 ```
