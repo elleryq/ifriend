@@ -389,8 +389,10 @@ def profile():
             filename = secure_filename(file.filename)
             filepath = os.path.join(
                 app.config['UPLOAD_FOLDER'],
-                filename
+                secure_filename(email),
+                filename,
             )
+            os.makedirs(os.path.dirname(filepath))
             file.save(filepath)
             filepath = os.path.basename(filepath)
 
